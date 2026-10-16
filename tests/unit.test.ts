@@ -1,3 +1,4 @@
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { DEFAULT_SILENCE, keepRanges, parseLevels, parseSilence, totalLength } from "../src/core/audio";
 import { sameMoment, suggestMoments } from "../src/core/moments";
@@ -66,8 +67,9 @@ describe("names", () => {
     expect(safeName('He said: "no way"? <b>/\\|*')).toBe("He said no way b");
     expect(safeName("CON")).toBe("clip-CON");
     expect(safeName("...")).toBe("clip");
-    const taken = new Set(["/tmp/x/My clip.mp4"]);
-    expect(uniqueOutput("/tmp/x", "My clip", "mp4", taken)).toBe("/tmp/x/My clip (2).mp4");
+    const dir = join("tmp-nonexistent", "x");   // OS-native separators so this passes on Windows too
+    const taken = new Set([join(dir, "My clip.mp4")]);
+    expect(uniqueOutput(dir, "My clip", "mp4", taken)).toBe(join(dir, "My clip (2).mp4"));
   });
 });
 
