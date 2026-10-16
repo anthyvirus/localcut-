@@ -72,7 +72,7 @@ export function App() {
       </aside>
       <main className="main">
         {route.page === "projects" && <ProjectsView onOpen={open} />}
-        {route.page === "obs" && <ObsView onImport={async (paths) => {
+        {route.page === "obs" && <ObsView onOpen={open} onImport={async (paths) => {
           const p = lastProject ? lastProject : await api().projects.create("OBS recording").then((x) => ({ id: x.id, name: x.name }));
           await api().media.import(p.id, paths);
           open(p.id, p.name);

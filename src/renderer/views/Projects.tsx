@@ -65,7 +65,7 @@ export function ProjectsView({ onOpen }: { onOpen: (id: string, name: string) =>
 }
 
 /** OBS is the main way in: connect by itself, then clip each recording the moment it stops. */
-function ObsCard({ onOpen }: { onOpen: (id: string, name: string) => void }) {
+export function ObsCard({ onOpen }: { onOpen: (id: string, name: string) => void }) {
   const [st, setSt] = useState<ObsStatus>({ state: "disconnected" });
   const [s, setS] = useState<Settings | null>(null);
   const [det, setDet] = useState<{ found: boolean; enabled?: boolean } | null>(null);

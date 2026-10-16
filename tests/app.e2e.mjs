@@ -156,8 +156,9 @@ await win.screenshot({ path: join(shots, "8-obs-autoclip.png") });
 await win.click(".q-top button:has-text('Home')");
 
 // OBS without OBS running: an honest failure, not a fake connection
-await win.click("button:has-text('OBS')");
-await win.click("button:has-text('Connect')");
+await win.click(".side button:has-text('OBS')");
+await win.click("summary:has-text('Manual connection')");
+await win.click("button:has-text('Connect with these settings')");
 await win.waitForSelector(".note.err", { timeout: 15000 });
 ok((await win.textContent(".note.err")).includes("Couldn't reach OBS"), "obs: shows a clear error when OBS isn't running");
 await win.screenshot({ path: join(shots, "6-obs.png") });
