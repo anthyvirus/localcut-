@@ -2,7 +2,8 @@
 // with progress parsed from `-progress pipe:1` and stderr kept for diagnostics.
 import { spawn } from "node:child_process";
 import { statSync } from "node:fs";
-import type { MediaInfo } from "../shared/types";
+import type { Diagnostics, MediaInfo } from "../shared/types";
+export type { Diagnostics };
 
 export interface Tools { ffmpeg: string; ffprobe: string }
 export const defaultTools: Tools = { ffmpeg: process.env.LOCALCUT_FFMPEG || "ffmpeg", ffprobe: process.env.LOCALCUT_FFPROBE || "ffprobe" };
@@ -53,7 +54,6 @@ export function run(bin: string, args: string[], opts: RunOptions = {}): Promise
   });
 }
 
-export interface Diagnostics { ok: boolean; ffmpeg?: string; ffprobe?: string; missing: string[]; filters: Record<string, boolean>; encoders: Record<string, boolean>; error?: string }
 
 const NEEDED_FILTERS = ["boxblur", "silencedetect", "astats", "ametadata", "subtitles", "drawtext", "loudnorm", "overlay", "scale", "crop"];
 const ENCODERS = ["libx264", "h264_nvenc", "h264_qsv", "h264_amf", "h264_videotoolbox", "aac"];

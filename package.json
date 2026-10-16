@@ -32,5 +32,47 @@
     "typescript": "5.9.3",
     "vite": "8.3.4",
     "vitest": "5.0.5"
-  }
+  },
+  "build": {
+    "appId": "io.localcut.app",
+    "productName": "LocalCut",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "assets/fonts",
+        "to": "fonts"
+      }
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "artifactName": "LocalCut-${version}-${arch}-${target}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "category": "AudioVideo"
+    },
+    "mac": {
+      "target": [
+        "dmg"
+      ],
+      "category": "public.app-category.video"
+    }
+  },
+  "author": "LocalCut contributors",
+  "homepage": "https://github.com/YOUR-ACCOUNT/localcut"
 }

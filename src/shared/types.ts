@@ -117,3 +117,5 @@ export interface Job {
   output?: string;
   attempts: number;
 }
+
+export interface Diagnostics { ok: boolean; ffmpeg?: string; ffprobe?: string; missing: string[]; filters: Record<string, boolean>; encoders: Record<string, boolean>; error?: string }
