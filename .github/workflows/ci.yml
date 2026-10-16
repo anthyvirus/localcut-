@@ -31,7 +31,15 @@ jobs:
         with: { node-version: 22, cache: npm }
       - run: npm ci
       - run: npm run build
-      - run: npx electron-builder --win --publish never
+      - name: Package installer
+        shell: bash
+        run: |
+          set -o pipefail
+          npx electron-builder --win --publish never 2>&1 | tee builder.log || {
+            msg=$(tail -n 40 builder.log | sed ':a;N;$!ba;s/%/%25/g;s/\r//g;s/\n/%0A/g')
+            echo "::error title=electron-builder failed::$msg"
+            exit 1
+          }
       - uses: actions/upload-artifact@v4
         with:
           name: LocalCut-windows
