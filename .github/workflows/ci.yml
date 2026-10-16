@@ -16,7 +16,14 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y ffmpeg
       - name: Install FFmpeg (Windows)
         if: runner.os == 'Windows'
-        run: choco install ffmpeg -y --no-progress
+        shell: pwsh
+        run: |
+          for ($i = 1; $i -le 3; $i++) {
+            choco install ffmpeg -y --no-progress --force
+            if (Get-Command ffmpeg -ErrorAction SilentlyContinue) { break }
+            Start-Sleep -Seconds 15
+          }
+          ffmpeg -version | Select-Object -First 1
       - run: npm ci
         env: { ELECTRON_SKIP_BINARY_DOWNLOAD: "1" }
       - run: npm run typecheck
