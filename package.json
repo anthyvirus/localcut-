@@ -1,7 +1,7 @@
 {
   "name": "localcut",
   "productName": "LocalCut",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Offline-first desktop editor that turns long streams and vlogs into vertical clips, locally.",
   "license": "MIT",
   "private": true,
@@ -37,7 +37,8 @@
     "appId": "io.localcut.app",
     "productName": "LocalCut",
     "directories": {
-      "output": "release"
+      "output": "release",
+      "buildResources": "build"
     },
     "files": [
       "dist/**",
@@ -53,24 +54,31 @@
       "target": [
         "nsis",
         "portable"
-      ]
+      ],
+      "icon": "build/icon.ico"
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
-      "artifactName": "LocalCut-Setup-${version}.${ext}"
+      "artifactName": "LocalCut-Setup-${version}.${ext}",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "shortcutName": "LocalCut",
+      "createDesktopShortcut": true
     },
     "linux": {
       "target": [
         "AppImage"
       ],
-      "category": "AudioVideo"
+      "category": "AudioVideo",
+      "icon": "build/icon.png"
     },
     "mac": {
       "target": [
         "dmg"
       ],
-      "category": "public.app-category.video"
+      "category": "public.app-category.video",
+      "icon": "build/icon.png"
     },
     "portable": {
       "artifactName": "LocalCut-Portable-${version}.${ext}"

@@ -42,8 +42,19 @@ await win.screenshot({ path: join(shots, "5-settings.png") });
 
 // import through the real button (dialog answered by the main process) -> the editor opens
 await app.evaluate(({ dialog }, f) => { dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [f] }); }, fixture);
-await win.click("button:has-text('Projects')");
+await win.click(".side button:has-text('Home')");
 await win.click("button:has-text('Import Footage')");
+// simple mode opens first and finds moments on its own
+await win.waitForSelector("text=Finding the best moments", { timeout: 15000 });
+ok(true, "simple: opens straight into finding moments, no setup");
+await win.waitForSelector(".q-card", { timeout: 90000 });
+const nQ = await win.locator(".q-card").count(), nTicked = await win.locator(".q-card input:checked").count();
+ok(nQ >= 1 && nTicked === Math.min(5, nQ), `simple: ${nQ} moments found, ${nTicked} pre-ticked`);
+ok(await win.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), "simple: no sideways scrolling");
+await win.waitForFunction(() => (document.querySelector(".q-card video")?.readyState ?? 0) >= 2, null, { timeout: 15000 }).catch(() => {});
+ok(await win.evaluate(() => (document.querySelector(".q-card video")?.readyState ?? 0) >= 2), "simple: clip cards show a preview frame");
+await win.screenshot({ path: join(shots, "2-simple.png") });
+await win.click("button:has-text('Advanced editor')");
 await win.waitForSelector(".ed .media-grid .src");
 const card = await win.textContent(".media-grid .src");
 ok(card.includes("0:40") && card.includes("1280×720"), "import: media card shows real duration and resolution");
@@ -54,7 +65,7 @@ ok(await win.evaluate(() => document.querySelector(".poster img").naturalWidth >
 
 // audio analysis from the Audio panel
 await win.click(".rail-btn:has-text('Audio')");
-await win.click("button:has-text('Analyse audio')");
+await win.click("button:text-matches('Analyse audio|Re-analyse')");
 await win.waitForSelector("text=/2 silences/", { timeout: 60000 });
 await win.waitForSelector("text=/loudness measured/", { timeout: 60000 });
 ok(true, "analysis: real silences found (2) and loudness measured");
@@ -122,7 +133,9 @@ await win.screenshot({ path: join(shots, "3-editor.png") });
 
 // export from the top bar
 await win.click(".ed-export");
-await win.waitForFunction(() => document.querySelector(".tray-bar")?.textContent?.includes("All jobs finished"), null, { timeout: 180000 });
+await win.waitForFunction(() => /All jobs finished|failed/.test(document.querySelector(".tray-bar")?.textContent ?? ""), null, { timeout: 300000 });
+if (!(await win.textContent(".tray-bar")).includes("All jobs finished")) { await win.click(".tray-bar"); console.log("TRAY:", (await win.textContent(".tray")).slice(0, 1500)); await win.click(".tray-bar"); }
+ok((await win.textContent(".tray-bar")).includes("All jobs finished"), `jobs: all finished (${await win.textContent(".tray-bar")})`);
 const files = existsSync(exportsDir) ? readdirSync(exportsDir).filter((f) => f.endsWith(".mp4")) : [];
 ok(files.length === 1, `export: ${files.length} MP4 file written`);
 for (const f of files) {
@@ -134,6 +147,13 @@ await win.waitForSelector("text=/already exported/");
 ok(true, "export: unchanged clips are not re-rendered");
 const nClips = 1;
 await win.click(".ed-top button:has-text('Projects')");
+
+// OBS auto-clip: a finished recording turns into suggested clips with no clicks
+await app.evaluate((_e, f) => globalThis.__lcObsRecordingFinished(f), fixture);
+await win.waitForSelector(".q-card", { timeout: 120000 });
+ok(await win.locator(".q-card").count() >= 1, "obs auto-clip: a stopped recording opens with moments already found");
+await win.screenshot({ path: join(shots, "8-obs-autoclip.png") });
+await win.click(".q-top button:has-text('Home')");
 
 // OBS without OBS running: an honest failure, not a fake connection
 await win.click("button:has-text('OBS')");
@@ -148,12 +168,27 @@ await app.close();
 app = await launch();
 win = await app.firstWindow();
 await win.waitForSelector(".plist-item");
-await win.locator(".plist-item").first().click();
+await win.locator(".plist-item", { hasText: "1 clip" }).first().click();   // the edited project (the OBS auto-clip one has none yet)
+await win.click("button:has-text('Advanced editor')");
 await win.waitForSelector(".tl-track.clips");
 await win.waitForTimeout(500);
 ok((await win.locator(".tl-track.clips .clip").count()) === nClips, "persistence: clips survive closing and reopening the app");
 await win.click(".rail-btn:has-text('Clips')");
 ok(await win.locator(".cliplist .dot.ok").count() === nClips, "persistence: export status remembered");
+
+// simple mode export: tick only the first two moments, one button, real files
+await win.click("button:has-text('Simple mode')");
+await win.waitForSelector(".q-card");
+for (const box of await win.locator(".q-card input").all()) await box.uncheck();
+const want = Math.min(2, await win.locator(".q-card").count());
+for (let i = 0; i < want; i++) await win.locator(".q-card input").nth(i).check();
+const nBefore = readdirSync(exportsDir).filter((f) => f.endsWith(".mp4")).length;
+await win.click(`.q-bar button:has-text('Export ${want} clip')`);
+await win.waitForSelector("text=/clips? ready/", { timeout: 300000 });
+const nAfter = readdirSync(exportsDir).filter((f) => f.endsWith(".mp4")).length;
+ok(nAfter > nBefore && nAfter <= nBefore + want, `simple: export wrote ${nAfter - nBefore} new clip(s) (already-exported ones are skipped)`);
+ok(await win.isVisible("button:has-text('Show my clips')"), "simple: finish screen offers Show my clips");
+await win.screenshot({ path: join(shots, "7-simple-done.png") });
 await app.close();
 console.log(fails ? `\n${fails} FAILED` : "\nALL APP CHECKS PASS");
 process.exit(fails ? 1 : 0);

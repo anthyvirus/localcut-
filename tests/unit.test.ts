@@ -1,4 +1,5 @@
 import { join } from "node:path";
+import { parseObsIni } from "../src/main/obs";
 import { describe, expect, it } from "vitest";
 import { DEFAULT_SILENCE, keepRanges, parseLevels, parseSilence, totalLength } from "../src/core/audio";
 import { sameMoment, suggestMoments } from "../src/core/moments";
@@ -111,5 +112,14 @@ describe("project", () => {
     expect(validateProject(JSON.parse(JSON.stringify(p))).clips[0]!.captions).toBe(false);
     p.clips[0]!.end = -1;
     expect(() => validateProject(JSON.parse(JSON.stringify(p)))).toThrow(/invalid times/);
+  });
+});
+
+describe("OBS settings detection", () => {
+  it("reads OBS 30's WebSocket section, Windows line endings included", () => {
+    const ini = "\uFEFF[General]\r\nName=x\r\n[OBSWebSocket]\r\nFirstLoad=false\r\nServerEnabled=true\r\nServerPort=4456\r\nAlertsEnabled=false\r\nAuthRequired=true\r\nServerPassword=abc123XYZ\r\n[Other]\r\nA=1\r\n";
+    expect(parseObsIni(ini)).toEqual({ enabled: true, port: 4456, password: "abc123XYZ" });
+    expect(parseObsIni("[OBSWebSocket]\nServerEnabled=false\nAuthRequired=false\n")).toEqual({ enabled: false, port: 4455, password: "" });
+    expect(parseObsIni("[General]\nA=1\n")).toBeNull();
   });
 });

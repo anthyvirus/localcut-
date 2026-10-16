@@ -8,7 +8,7 @@ export interface Settings {
   whisperBinary: string;       // path to whisper.cpp's whisper-cli
   whisperModel: string;        // path to a ggml model file
   whisperLanguage: string;     // "" = auto
-  obs: { host: string; port: number; hasPassword: boolean; recordingDir: string; autoImport: boolean };
+  obs: { host: string; port: number; hasPassword: boolean; recordingDir: string; autoImport: boolean; autoConnect: boolean };
   quality: { crf: number; preset: string; audioKbps: number; normalize: boolean; threads: number };
 }
 
@@ -34,7 +34,7 @@ export interface LocalCutApi {
   clips: { create(projectId: string, sourceId: string, start: number, end: number, name: string): Promise<Project>; update(projectId: string, clip: Clip): Promise<Project>; remove(projectId: string, clipId: string): Promise<Project>; setAll(projectId: string, clips: Clip[]): Promise<Project>; exportSrt(projectId: string, clipId: string): Promise<string> };
   exports: { queue(projectId: string, clipIds: string[], force?: boolean): Promise<{ queued: number; skipped: number }>; reveal(path: string): Promise<void>; openFolder(dir?: string): Promise<void> };
   jobs: { list(): Promise<Job[]>; cancel(id: string): Promise<void>; retry(id: string): Promise<boolean>; clear(): Promise<void>; onChange(cb: (jobs: Job[]) => void): () => void };
-  obs: { connect(): Promise<ObsStatus>; disconnect(): Promise<ObsStatus>; status(): Promise<ObsStatus>; onStatus(cb: (s: ObsStatus) => void): () => void; latestRecordings(): Promise<{ path: string; mtime: string; size: number }[]> };
+  obs: { connect(): Promise<ObsStatus>; disconnect(): Promise<ObsStatus>; status(): Promise<ObsStatus>; onStatus(cb: (s: ObsStatus) => void): () => void; latestRecordings(): Promise<{ path: string; mtime: string; size: number }[]>; detect(): Promise<{ found: boolean; enabled?: boolean; port?: number; hasPassword: boolean }>; onAutoClip(cb: (e: { projectId?: string; name?: string; error?: string }) => void): () => void };
   events: { onProjectChanged(cb: (p: Project) => void): () => void };
 }
 

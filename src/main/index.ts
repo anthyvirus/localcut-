@@ -1,6 +1,6 @@
 // LocalCut main process: one window, a locked-down renderer, validated IPC, and a media
 // protocol that only serves files the user has imported (with byte ranges for seeking).
-import { app, BrowserWindow, dialog, ipcMain, protocol, safeStorage, session, shell } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, Menu, Notification, protocol, safeStorage, session, shell } from "electron";
 import { createReadStream, existsSync, statSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
@@ -54,7 +54,8 @@ async function serveMedia(req: Request): Promise<Response> {
 
 function createWindow() {
   win = new BrowserWindow({
-    width: 1440, height: 900, minWidth: 1100, minHeight: 680, backgroundColor: "#0b0c0e", title: "LocalCut", show: false,
+    width: 1440, height: 900, minWidth: 1100, minHeight: 680, backgroundColor: "#0e0f11", title: "LocalCut", show: false,
+    icon: app.isPackaged ? undefined : join(__dirname, "../../../build/icon.png"),   // packaged builds use the exe/AppImage icon
     webPreferences: { preload: join(__dirname, "../preload/index.js"), contextIsolation: true, nodeIntegration: false, sandbox: true, webSecurity: true, spellcheck: false },
   });
   win.once("ready-to-show", () => win?.show());
@@ -65,6 +66,18 @@ function createWindow() {
   win.webContents.on("will-navigate", (e, url) => { if (!url.startsWith("file://")) e.preventDefault(); });
   void win.loadFile(join(__dirname, "../../renderer/index.html"));
   if (isDev) win.webContents.openDevTools({ mode: "detach" });
+}
+
+/** Connect using what OBS itself has configured on this computer, falling back to what the user saved. */
+async function connectObs() {
+  const d = ObsService.detectConfig();
+  const host = svc.settings.obs.host;
+  const local = host === "127.0.0.1" || host === "localhost";
+  const port = local && d.port ? d.port : svc.settings.obs.port;
+  const saved = await obsPassword();
+  const first = await obs.connect(host, port, saved || (local ? d.password : undefined));
+  if (first.state !== "connected" && local && saved && d.password && d.password !== saved) return obs.connect(host, port, d.password);
+  return first;
 }
 
 async function obsPassword(): Promise<string | undefined> {
@@ -90,8 +103,20 @@ function registerIpc() {
   obs.onStatus = (s) => send("obs:status", s);
   obs.onRecordingFinished = (path) => {
     svc.allowedMedia.add(resolve(path));
-    if (svc.settings.obs.autoImport) send("obs:recording", path);
+    if (!svc.settings.obs.autoImport) return;
+    // auto-clip: import the recording and find moments right away, entirely on this computer
+    void svc.autoClip(path).then((p) => {
+      send("obs:autoclip", { projectId: p.id, name: p.name });
+      if (Notification.isSupported()) {
+        const n = new Notification({ title: "LocalCut is clipping your recording", body: `${p.name}: finding the best moments now.`, silent: true });
+        n.on("click", () => { win?.show(); win?.focus(); });
+        n.show();
+      }
+    }).catch((e) => send("obs:autoclip", { error: (e as Error).message }));
   };
+
+  // test hook (only with LOCALCUT_USER_DATA, which only tests set): act out "OBS stopped recording"
+  if (!app.isPackaged && process.env.LOCALCUT_USER_DATA) (globalThis as Record<string, unknown>).__lcObsRecordingFinished = (path: string) => obs.onRecordingFinished(path);
 
   handle("app:info", () => ({ version: app.getVersion(), platform: process.platform, userData: app.getPath("userData") }));
   handle("app:diagnostics", () => svc.diagnostics());
@@ -148,7 +173,8 @@ function registerIpc() {
   handle("jobs:cancel", (id: string) => svc.queue.cancel(str(id, 64)));
   handle("jobs:retry", (id: string) => svc.retry(str(id, 64)));
   handle("jobs:clear", () => svc.queue.clearFinished());
-  handle("obs:connect", async () => obs.connect(svc.settings.obs.host, svc.settings.obs.port, await obsPassword()));
+  handle("obs:connect", () => connectObs());
+  handle("obs:detect", () => { const d = ObsService.detectConfig(); return { found: d.found, enabled: d.enabled, port: d.port, hasPassword: !!d.password }; });
   handle("obs:disconnect", () => obs.disconnect());
   handle("obs:status", () => obs.status);
   handle("obs:latest", () => {
@@ -159,7 +185,9 @@ function registerIpc() {
   });
 }
 
+app.setAppUserModelId("io.localcut.app");   // Windows: our own taskbar identity and notifications
 app.whenReady().then(async () => {
+  if (process.platform !== "darwin") Menu.setApplicationMenu(null);   // no generic File/Edit/View menu; everything lives in the app
   // a strict CSP on everything the window loads
   session.defaultSession.webRequest.onHeadersReceived((d, cb) => cb({ responseHeaders: { ...d.responseHeaders,
     "Content-Security-Policy": ["default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: lcmedia:; media-src lcmedia:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'"] } }));
@@ -169,6 +197,10 @@ app.whenReady().then(async () => {
   mediaProtocol();
   registerIpc();
   createWindow();
+  // stay connected to OBS in the background so recordings are caught without opening the OBS page
+  const tryObs = () => { if (svc.settings.obs.autoConnect && obs.status.state !== "connected" && obs.status.state !== "connecting") void connectObs().catch(() => {}); };
+  setTimeout(tryObs, 1500);
+  setInterval(tryObs, 15000);
   app.on("activate", () => { if (!BrowserWindow.getAllWindows().length) createWindow(); });
 });
 app.on("window-all-closed", () => { if (process.platform !== "darwin") app.quit(); });

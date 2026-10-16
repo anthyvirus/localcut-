@@ -1,3 +1,5 @@
+<p align="center"><img src="assets/logo.svg" width="96" alt="LocalCut logo"></p>
+
 # LocalCut
 
 **Turn hours of raw footage into multiple edited clips, without uploading your videos to a cloud service.**
@@ -6,7 +8,19 @@ LocalCut is an offline-first, open-source desktop app for streamers and vloggers
 
 > Status: early (v0.1). The core workflow works end to end and is covered by real FFmpeg tests. See [docs/STATUS.md](docs/STATUS.md) for exactly what's verified.
 
+## How it works (the simple way)
+
+1. **Install** [OBS Studio](https://obsproject.com) and LocalCut. In OBS, turn on **Tools → WebSocket Server Settings → Enable WebSocket server** once.
+2. **Record** as usual. LocalCut connects to OBS by itself (it reads OBS's own settings on your computer, so you don't copy any password).
+3. **Stop recording.** LocalCut imports it, listens for the liveliest moments and shows you the best clips.
+4. **Tick the ones you like and press Export.** You get 1080×1920 vertical clips with a blurred background, in your Videos/LocalCut folder.
+
+Not using OBS? Drop any video on the home screen. Want more control? Every project has an **Advanced editor** with a timeline, trimming, headlines and captions.
+
 ## What works today
+
+- **OBS auto-clip**: connects in the background, detects OBS's port and password from OBS's own config file, and clips each recording when it stops (on by default, switchable on the home screen).
+- **Simple mode** (the default screen for every project): find moments → pick → export, with a preview for every suggestion.
 
 - **Import** MP4, MOV, MKV, WebM (anything your FFmpeg can decode): files, several at once, or a whole folder. Duration, resolution, frame rate, audio tracks and size come from FFprobe.
 - **Blurred Portrait** (the main format): 1080×1920 with the sharp original centred over a blurred, darkened, enlarged copy of itself. Adjustable size, position, blur, darkness and zoom, plus top and bottom safe areas. Also Full-screen vertical (crop to fill), Clean landscape, Hook clip, Black background, and Custom.
@@ -80,6 +94,10 @@ Architecture: `src/core` is the media engine (pure TypeScript and FFmpeg, no Ele
 - **OBS won't connect**: OBS must be open with the WebSocket server enabled. Check the port and password, and firewall software that blocks local connections.
 - **Export stops on a low-memory computer**: a 1080×1920 encode needs a few hundred MB of RAM. Lower "Computer load while exporting" in Settings, or pick a faster quality preset.
 - **A clip won't export**: open Jobs at the bottom of the window. The last FFmpeg lines are shown, and Retry runs it again.
+
+## Contributing
+
+Forks and pull requests are welcome. `npm ci`, `npm test` (engine) and `xvfb-run -a node tests/app.e2e.mjs` (drives the real app) must pass. The logo is in `assets/logo.svg`; app icons are generated into `build/` from it.
 
 ## Licence
 LocalCut is MIT licensed. Bundled fonts (Anton, Inter) are SIL Open Font License. FFmpeg and whisper.cpp are separate programs you install. See [docs/LICENSES.md](docs/LICENSES.md).

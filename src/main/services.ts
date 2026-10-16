@@ -37,7 +37,7 @@ export class Services {
     await mkdir(this.projectsDir, { recursive: true });
     const defaults: Settings = {
       ffmpegPath: "", ffprobePath: "", exportDir: this.defaultExportDir, whisperBinary: "", whisperModel: "", whisperLanguage: "",
-      obs: { host: "127.0.0.1", port: 4455, hasPassword: false, recordingDir: "", autoImport: false },
+      obs: { host: "127.0.0.1", port: 4455, hasPassword: false, recordingDir: "", autoImport: true, autoConnect: true },
       quality: { crf: 20, preset: "veryfast", audioKbps: 160, normalize: true, threads: 0 },
     };
     try {
@@ -228,6 +228,26 @@ export class Services {
     s.analysis.candidates = { generatedAt: new Date().toISOString(), items };
     await this.save(p, true);
     return items;
+  }
+
+  /** OBS auto-clip: a finished recording becomes a project with moment suggestions, no clicks. */
+  async autoClip(path: string): Promise<Project> {
+    const name = path.split(/[\\/]/).pop()!.replace(/\.[^.]+$/, "");
+    const p = await this.create(name);
+    const r = await this.importMedia(p.id, [path]);
+    const src = r.project.sources[0];
+    if (!src) { await this.remove(p.id).catch(() => {}); throw new Error(r.errors[0]?.error ?? "OBS's recording couldn't be read."); }
+    await this.analyse(p.id, src.id, { silence: { ...DEFAULT_SILENCE }, energy: true });
+    void (async () => {   // suggest as soon as the audio is analysed
+      for (let i = 0; i < 3600; i++) {
+        await new Promise((ok) => setTimeout(ok, 1000));
+        const x = await this.open(p.id).catch(() => null);
+        const a = x?.sources[0]?.analysis;
+        if (a?.silence && a?.energy) { await this.suggest(p.id, src.id, { count: 10, minSec: 15, maxSec: 35, contextSec: 1.5 }).catch(() => {}); return; }
+        if (this.queue.jobs.some((j) => j.projectId === p.id && j.state === "failed")) return;
+      }
+    })();
+    return r.project;
   }
 
   async candidatesToClips(projectId: string, ids: string[]) {

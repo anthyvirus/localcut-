@@ -30,7 +30,7 @@ export interface EditorCtx {
   sel: Interval | null; setSel(i: Interval | null): void;
 }
 
-export function Editor({ projectId, onHome, onRenamed }: { projectId: string; onHome: () => void; onRenamed: (name: string) => void }) {
+export function Editor({ projectId, onHome, onSimple, onRenamed }: { projectId: string; onHome: () => void; onSimple: () => void; onRenamed: (name: string) => void }) {
   const [p, setP] = useState<Project | null>(null);
   const [err, setErr] = useState("");
   const [sourceId, setSourceId] = useState<string | null>(null);
@@ -124,6 +124,7 @@ export function Editor({ projectId, onHome, onRenamed }: { projectId: string; on
     <div className="ed">
       <header className="ed-top">
         <button className="btn ghost" onClick={onHome} title="All projects"><Icon name="projects" />Projects</button>
+        <button className="btn ghost" onClick={onSimple} title="Back to the simple pick-and-export screen"><Icon name="spark" />Simple mode</button>
         <div className="ed-hist">
           <button className="btn ghost icon" aria-label="Undo" title={undo.current.length ? `Undo ${undo.current.at(-1)!.label} (Ctrl+Z)` : "Nothing to undo"} disabled={!undo.current.length} onClick={() => step(undo, redo)}><Icon name="undo" /></button>
           <button className="btn ghost icon" aria-label="Redo" title={redo.current.length ? `Redo ${redo.current.at(-1)!.label} (Ctrl+Shift+Z)` : "Nothing to redo"} disabled={!redo.current.length} onClick={() => step(redo, undo)}><Icon name="redo" /></button>

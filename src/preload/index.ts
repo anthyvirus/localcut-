@@ -22,7 +22,7 @@ const api: LocalCutApi = {
   clips: { create: call("clips:create") as never, update: call("clips:update") as never, remove: call("clips:remove") as never, setAll: call("clips:setAll") as never, exportSrt: call("clips:srt") as never },
   exports: { queue: call("exports:queue") as never, reveal: call("exports:reveal") as never, openFolder: call("exports:openFolder") as never },
   jobs: { list: call("jobs:list") as never, cancel: call("jobs:cancel") as never, retry: call("jobs:retry") as never, clear: call("jobs:clear") as never, onChange: sub("jobs:changed") as never },
-  obs: { connect: call("obs:connect") as never, disconnect: call("obs:disconnect") as never, status: call("obs:status") as never, onStatus: sub("obs:status") as never, latestRecordings: call("obs:latest") as never },
+  obs: { connect: call("obs:connect") as never, disconnect: call("obs:disconnect") as never, status: call("obs:status") as never, onStatus: sub("obs:status") as never, latestRecordings: call("obs:latest") as never, detect: call("obs:detect") as never, onAutoClip: sub("obs:autoclip") as never },
   events: { onProjectChanged: sub("project:changed") as never },
 };
 

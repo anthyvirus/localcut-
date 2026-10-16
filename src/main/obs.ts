@@ -1,6 +1,7 @@
 // OBS Studio through its built-in WebSocket server (obs-websocket 5.x, OBS 28+).
 // Status is only "connected" after a real Identify handshake succeeds.
-import { readdirSync, statSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { homedir } from "node:os";
 import { join } from "node:path";
 import { OBSWebSocket } from "obs-websocket-js";
 import type { ObsStatus } from "../shared/api";
@@ -54,6 +55,27 @@ export class ObsService {
 
   async disconnect(): Promise<ObsStatus> { this.stopPoll(); await this.obs.disconnect().catch(() => {}); this.set({ state: "disconnected", error: undefined }); return this.status; }
 
+  /** OBS's own WebSocket settings on this computer (OBS 30+ keeps them in user.ini/global.ini,
+   *  OBS 28-29 in plugin_config/obs-websocket/config.json). Read locally, never sent anywhere. */
+  static detectConfig(): { found: boolean; enabled?: boolean; port?: number; password?: string } {
+    const base = process.platform === "win32" ? join(process.env.APPDATA ?? join(homedir(), "AppData", "Roaming"), "obs-studio")
+      : process.platform === "darwin" ? join(homedir(), "Library", "Application Support", "obs-studio") : join(homedir(), ".config", "obs-studio");
+    for (const f of ["user.ini", "global.ini"]) {
+      const file = join(base, f);
+      if (!existsSync(file)) continue;
+      const r = parseObsIni(readFileSync(file, "utf8"));
+      if (r) return { found: true, ...r };
+    }
+    const json = join(base, "plugin_config", "obs-websocket", "config.json");
+    if (existsSync(json)) {
+      try {
+        const c = JSON.parse(readFileSync(json, "utf8"));
+        return { found: true, enabled: !!c.server_enabled, port: Number(c.server_port) || 4455, password: c.auth_required === false ? "" : c.server_password };
+      } catch { /* unreadable: fall through */ }
+    }
+    return { found: existsSync(base) };
+  }
+
   /** Newest video files in a recordings folder (works without a live OBS connection). */
   static recentRecordings(dir: string, limit = 10): { path: string; mtime: string; size: number }[] {
     try {
@@ -63,4 +85,12 @@ export class ObsService {
       }).sort((a, b) => b.mtime.localeCompare(a.mtime)).slice(0, limit);
     } catch { return []; }
   }
+}
+
+/** The [OBSWebSocket] section of OBS 30+'s user.ini / global.ini. */
+export function parseObsIni(text: string): { enabled: boolean; port: number; password?: string } | null {
+  const sec = /\[OBSWebSocket\]\r?\n([\s\S]*?)(?:\r?\n\[|$)/.exec(text.replace(/^\uFEFF/, ""))?.[1];
+  if (!sec) return null;
+  const val = (k: string) => new RegExp(`^${k}=(.*?)\\r?$`, "m").exec(sec)?.[1]?.trim();
+  return { enabled: val("ServerEnabled") === "true", port: Number(val("ServerPort")) || 4455, password: val("AuthRequired") === "false" ? "" : val("ServerPassword") };
 }
