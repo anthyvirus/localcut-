@@ -53,12 +53,12 @@
       "target": [
         "nsis",
         "portable"
-      ],
-      "artifactName": "LocalCut-${version}-${arch}-${target}.${ext}"
+      ]
     },
     "nsis": {
       "oneClick": false,
-      "allowToChangeInstallationDirectory": true
+      "allowToChangeInstallationDirectory": true,
+      "artifactName": "LocalCut-Setup-${version}.${ext}"
     },
     "linux": {
       "target": [
@@ -71,6 +71,9 @@
         "dmg"
       ],
       "category": "public.app-category.video"
+    },
+    "portable": {
+      "artifactName": "LocalCut-Portable-${version}.${ext}"
     }
   },
   "author": "LocalCut contributors",
