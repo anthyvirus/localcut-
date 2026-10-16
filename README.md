@@ -17,9 +17,11 @@ LocalCut is an offline-first, open-source desktop app for streamers and vloggers
 - **Captions (optional, OFF by default)**: built only from real transcript words, burned in with libass. You can set the style and position, and save an `.srt` file.
 - **Local transcription** with [whisper.cpp](https://github.com/ggml-org/whisper.cpp), if you install it and a model (see below).
 - **OBS Studio**: connects over OBS WebSocket 5 (OBS 28+) and shows recording and streaming status. It can list and import your latest recordings and offer to import a recording when it stops. The password is stored with your operating system's secure storage.
+- **Editor layout** familiar from desktop video editors: media/moments/clips/audio/captions panel on the left, a preview that shows the clip exactly as it will export, a properties panel on the right, and a timeline along the bottom with Moments, Clips, Video (filmstrip) and Audio (waveform and silences) tracks. Split (Ctrl+B), trim by dragging clip edges, drag to move, snapping, zoom, delete, and undo/redo (Ctrl+Z / Ctrl+Shift+Z) for clip edits. The layout is original work; no CapCut code or assets are used. See [docs/CAPCUT_COMPARISON.md](docs/CAPCUT_COMPARISON.md).
+- **Computer load setting** (Settings → Quality): limit how many CPU threads an export uses, so a small machine stays responsive.
 - **Projects** are saved as JSON and reopen exactly as you left them.
 
-Planned (not built yet): word-level transcript editing, a multi-track timeline, subject-aware reframing, optional local-LLM ranking (Ollama), and GPU encoder selection in the UI.
+Planned (not built yet): word-level transcript editing, multiple video/overlay tracks, keyframes, transitions, stickers/effects, subject-aware reframing, optional local-LLM ranking (Ollama), and GPU encoder selection in the UI.
 
 ## Install and run
 
@@ -76,6 +78,7 @@ Architecture: `src/core` is the media engine (pure TypeScript and FFmpeg, no Ele
 - **"ffmpeg was not found"**: install FFmpeg or set its path in Settings → FFmpeg, then press "Check again".
 - **Captions fail on Windows**: make sure your FFmpeg build includes libass (the "full" builds do).
 - **OBS won't connect**: OBS must be open with the WebSocket server enabled. Check the port and password, and firewall software that blocks local connections.
+- **Export stops on a low-memory computer**: a 1080×1920 encode needs a few hundred MB of RAM. Lower "Computer load while exporting" in Settings, or pick a faster quality preset.
 - **A clip won't export**: open Jobs at the bottom of the window. The last FFmpeg lines are shown, and Retry runs it again.
 
 ## Licence

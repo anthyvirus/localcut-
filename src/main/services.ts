@@ -6,7 +6,7 @@ import { join, resolve } from "node:path";
 import type { MomentRequest, ProjectSummary, Settings } from "../shared/api";
 import type { Candidate, Clip, Interval, Job, Project, SilenceSettings, SourceMedia } from "../shared/types";
 import { DEFAULT_SILENCE, detectSilence, keepRanges, loudnessCurve } from "../core/audio";
-import { diagnose, probe, thumbnail, type Tools } from "../core/ffmpeg";
+import { diagnose, filmstrip, probe, thumbnail, type Tools } from "../core/ffmpeg";
 import { suggestMoments } from "../core/moments";
 import { uniqueOutput } from "../core/names";
 import { addSource, loadProject, newClip, newProject, saveProject, validateProject } from "../core/project";
@@ -38,7 +38,7 @@ export class Services {
     const defaults: Settings = {
       ffmpegPath: "", ffprobePath: "", exportDir: this.defaultExportDir, whisperBinary: "", whisperModel: "", whisperLanguage: "",
       obs: { host: "127.0.0.1", port: 4455, hasPassword: false, recordingDir: "", autoImport: false },
-      quality: { crf: 20, preset: "veryfast", audioKbps: 160, normalize: true },
+      quality: { crf: 20, preset: "veryfast", audioKbps: 160, normalize: true, threads: 0 },
     };
     try {
       const s = JSON.parse(await readFile(this.settingsFile, "utf8")) as Partial<Settings>;
@@ -51,6 +51,7 @@ export class Services {
     const next: Settings = { ...this.settings, ...patch, obs: { ...this.settings.obs, ...patch.obs }, quality: { ...this.settings.quality, ...patch.quality } };
     next.obs.port = Math.max(1, Math.min(65535, Math.round(Number(next.obs.port) || 4455)));
     next.quality.crf = Math.max(12, Math.min(35, Math.round(next.quality.crf)));
+    next.quality.threads = Math.max(0, Math.min(32, Math.round(Number(next.quality.threads) || 0)));
     if (!["ultrafast", "superfast", "veryfast", "faster", "fast", "medium", "slow"].includes(next.quality.preset)) next.quality.preset = "veryfast";
     this.settings = next;
     await writeFile(this.settingsFile, JSON.stringify(next, null, 2), "utf8");
@@ -89,7 +90,11 @@ export class Services {
   async open(id: string): Promise<Project> {
     const p = this.projects.get(id) ?? await loadProject(this.dirOf(id));
     this.projects.set(id, p);
-    for (const s of p.sources) this.allowedMedia.add(resolve(s.path));
+    for (const s of p.sources) {
+      this.allowedMedia.add(resolve(s.path));
+      const pending = this.queue.jobs.some((j) => j.sourceId === s.id && j.kind === "thumbnail" && (j.state === "queued" || j.state === "running"));
+      if (!s.strip && !pending && existsSync(s.path)) this.queueStrip(p, s);      // older projects get filmstrips too
+    }
     return p;
   }
 
@@ -139,13 +144,28 @@ export class Services {
         const thumbs = join(this.dirOf(p.id), "thumbs");
         await mkdir(thumbs, { recursive: true });
         await thumbnail(path, Math.min(5, info.durationSec / 3), join(thumbs, `${s.id}.jpg`), 480, this.tools()).catch(() => undefined);
+        this.queueStrip(p, s);
       } catch (e) { errors.push({ path, error: (e as Error).message }); }
     }
     await this.save(p, true);
     return { project: p, errors };
   }
 
-  thumbPath(projectId: string, sourceId: string) { return join(this.dirOf(projectId), "thumbs", `${sourceId}.jpg`); }
+  thumbPath(projectId: string, sourceId: string, kind: "poster" | "strip" = "poster") {
+    if (!/^[0-9a-f-]{36}$/.test(sourceId)) throw new Error("Invalid source id.");
+    return join(this.dirOf(projectId), "thumbs", kind === "strip" ? `${sourceId}-strip.jpg` : `${sourceId}.jpg`);
+  }
+
+  /** Timeline filmstrip, made in the background (about one frame per 10 s, 20–240 frames). */
+  queueStrip(p: Project, s: SourceMedia) {
+    const out = this.thumbPath(p.id, s.id, "strip");
+    const count = Math.max(20, Math.min(240, Math.round(s.info.durationSec / 10)));
+    this.queue.add("thumbnail", `Filmstrip · ${s.path.split(/[\\/]/).pop()}`, async (_j, signal, progress) => {
+      const r = await filmstrip(s.path, s.info.durationSec, out, count, 54, this.tools(), { signal, onProgress: progress });
+      s.strip = { count: r.count, frameWidth: r.frameWidth, height: 54 };
+      await this.save(p, true);
+    }, { projectId: p.id, sourceId: s.id });
+  }
 
   async removeSource(projectId: string, sourceId: string) {
     const p = await this.open(projectId);
@@ -243,6 +263,24 @@ export class Services {
     next.headline.text = String(next.headline.text).slice(0, 300);
     p.clips[i] = next;
     await this.save(p);           // debounced: sliders don't hammer the disk
+    return p;
+  }
+
+  /** Replace the whole clip list (undo/redo, split). Every clip is validated as on update. */
+  async setClips(projectId: string, clips: Clip[]) {
+    const p = await this.open(projectId);
+    if (!Array.isArray(clips) || clips.length > 2000) throw new Error("Invalid clip list.");
+    const next: Clip[] = [];
+    for (const c of clips) {
+      const s = this.source(p, c.sourceId);
+      const v = validateProject({ ...p, clips: [c] }).clips[0]!;
+      v.start = clampNum(v.start, 0, s.info.durationSec);
+      v.end = clampNum(v.end, v.start + 0.5, s.info.durationSec);
+      v.name = String(v.name).slice(0, 120);
+      next.push(v);
+    }
+    p.clips = next;
+    await this.save(p, true);
     return p;
   }
 

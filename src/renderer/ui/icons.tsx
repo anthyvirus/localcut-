@@ -24,6 +24,15 @@ const P: Record<string, ReactElement> = {
   outmark: <path d="M11 3v10M11 8H4" />,
   link: <path d="M7 9.5 9.5 7M6 6.5 4.6 7.9a2.5 2.5 0 0 0 3.5 3.5L9.5 10M10 9.5l1.4-1.4a2.5 2.5 0 0 0-3.5-3.5L6.5 6" />,
   chevron: <path d="m6 4 4 4-4 4" />,
+  film: <><rect x="2" y="3" width="12" height="10" rx="1" /><path d="M5 3v10M11 3v10M2 6h3M2 10h3M11 6h3M11 10h3" /></>,
+  undo: <><path d="M5.5 4 3 6.5 5.5 9" /><path d="M3 6.5h6.5a3.5 3.5 0 0 1 0 7H7" /></>,
+  redo: <><path d="M10.5 4 13 6.5 10.5 9" /><path d="M13 6.5H6.5a3.5 3.5 0 0 0 0 7H9" /></>,
+  back: <><path d="M8 4.5 4.5 8 8 11.5M12 4.5 8.5 8l3.5 3.5" /></>,
+  fwd: <><path d="M8 4.5 11.5 8 8 11.5M4 4.5 7.5 8 4 11.5" /></>,
+  volume: <><path d="M2.5 6h2.5L8 3.5v9L5 10H2.5z" /><path d="M10.5 6a2.5 2.5 0 0 1 0 4M12 4.5a4.5 4.5 0 0 1 0 7" /></>,
+  full: <path d="M2.5 6V2.5H6M10 2.5h3.5V6M13.5 10v3.5H10M6 13.5H2.5V10" />,
+  magnet: <path d="M3.5 3v5a4.5 4.5 0 0 0 9 0V3h-3v5a1.5 1.5 0 0 1-3 0V3zM3.5 5.5h3M9.5 5.5h3" />,
+  minus: <path d="M3 8h10" />,
 };
 export function Icon({ name, size = 16, className }: { name: keyof typeof P | string; size?: number; className?: string }) {
   return <svg className={`ico ${className ?? ""}`} width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{P[name] ?? null}</svg>;

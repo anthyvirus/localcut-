@@ -193,3 +193,15 @@ describe("Test H: recovery", () => {
     expect(renderHash({ clip: { ...clip, end: 6 }, info })).not.toBe(a);
   });
 });
+
+describe("filmstrip", () => {
+  it("tiles evenly spaced frames into one image for the timeline", async () => {
+    const { filmstrip } = await import("../src/core/ffmpeg");
+    const out = join(OUT, "strip.jpg");
+    const r = await filmstrip(info.path, info.durationSec, out, 20, 54);
+    const s = await probe(out).catch(() => null);
+    expect(existsSync(out)).toBe(true);
+    expect(r.frameWidth).toBe(96);           // 1280x720 scaled to 54 px tall -> 96 px wide
+    expect(s?.video?.height).toBe(54);
+  });
+});

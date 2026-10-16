@@ -80,6 +80,7 @@ export interface SourceMedia {
   path: string;
   info: MediaInfo;
   addedAt: string;
+  strip?: { count: number; frameWidth: number; height: number };   // timeline filmstrip
   analysis: {
     silence?: { settings: SilenceSettings; intervals: Interval[]; doneAt: string };
     energy?: { stepSec: number; db: number[]; doneAt: string };

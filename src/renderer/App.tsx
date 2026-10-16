@@ -5,7 +5,7 @@ import { JobTray } from "./ui/JobTray";
 import { ObsView } from "./views/Obs";
 import { ProjectsView } from "./views/Projects";
 import { SettingsView } from "./views/Settings";
-import { Workspace } from "./views/Workspace";
+import { Editor } from "./editor/Editor";
 
 export type Route = { page: "projects" } | { page: "project"; id: string } | { page: "obs" } | { page: "settings" };
 
@@ -19,6 +19,15 @@ export function App() {
   const nav = (page: Route["page"], label: string, icon: string, target: Route) => (
     <button className="nav-btn" aria-current={route.page === page ? "page" : undefined} onClick={() => go(target)}><Icon name={icon} />{label}</button>
   );
+  if (route.page === "project") {
+    // the editor takes the whole window, like a desktop editor; "Projects" in its top bar goes back
+    return (
+      <div className="app editor-mode">
+        <Editor key={route.id} projectId={route.id} onHome={() => go({ page: "projects" })} onRenamed={(name) => setLastProject({ id: route.id, name })} />
+        <JobTray />
+      </div>
+    );
+  }
   return (
     <div className="app">
       <aside className="side" aria-label="Main">
@@ -27,7 +36,7 @@ export function App() {
         {lastProject && (<>
           <div className="side-sep" />
           <div className="side-label">Open project</div>
-          <button className="nav-btn" aria-current={route.page === "project" ? "page" : undefined} onClick={() => go({ page: "project", id: lastProject.id })}>
+          <button className="nav-btn" onClick={() => go({ page: "project", id: lastProject.id })}>
             <Icon name="scissors" /><span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{lastProject.name}</span>
           </button>
         </>)}
@@ -38,7 +47,6 @@ export function App() {
       </aside>
       <main className="main">
         {route.page === "projects" && <ProjectsView onOpen={open} />}
-        {route.page === "project" && <Workspace key={route.id} projectId={route.id} onRenamed={(name) => setLastProject({ id: route.id, name })} />}
         {route.page === "obs" && <ObsView onImport={async (paths) => {
           const p = lastProject ? lastProject : await api().projects.create("OBS recording").then((x) => ({ id: x.id, name: x.name }));
           await api().media.import(p.id, paths);

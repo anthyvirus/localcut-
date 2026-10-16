@@ -30,9 +30,13 @@ async function serveMedia(req: Request): Promise<Response> {
   {
     const u = new URL(req.url);
     if (process.env.LOCALCUT_DEBUG_MEDIA) console.error("media request", req.url, req.headers.get("range"));
-    const file = resolve(decodeURIComponent(u.searchParams.get("p") ?? ""));
     const isThumb = u.hostname === "thumb";
-    if (!existsSync(file) || (!isThumb && !svc.allowedMedia.has(file)) || (isThumb && !file.startsWith(svc.projectsDir))) {
+    let file: string;
+    try {
+      file = isThumb ? svc.thumbPath(u.searchParams.get("project") ?? "", u.searchParams.get("source") ?? "", u.searchParams.get("kind") === "strip" ? "strip" : "poster")
+        : resolve(u.searchParams.get("p") ?? "");
+    } catch { return new Response("Not available", { status: 404 }); }
+    if (!existsSync(file) || (!isThumb && !svc.allowedMedia.has(file))) {
       return new Response("Not available", { status: 404 });
     }
     const size = statSync(file).size;
@@ -134,6 +138,7 @@ function registerIpc() {
   handle("moments:toClips", (id: string, ids: string[]) => svc.candidatesToClips(str(id, 64), strs(ids)));
   handle("clips:create", (id: string, sid: string, a: number, b: number, name: string) => svc.createClip(str(id, 64), str(sid, 64), Number(a), Number(b), str(name, 200)));
   handle("clips:update", (id: string, clip: never) => svc.updateClip(str(id, 64), clip));
+  handle("clips:setAll", (id: string, clips: never) => svc.setClips(str(id, 64), clips));
   handle("clips:remove", (id: string, cid: string) => svc.removeClip(str(id, 64), str(cid, 64)));
   handle("clips:srt", (id: string, cid: string) => svc.exportSrt(str(id, 64), str(cid, 64)));
   handle("exports:queue", (id: string, ids: string[], force: boolean) => svc.queueExports(str(id, 64), strs(ids), force === true));

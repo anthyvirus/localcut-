@@ -127,7 +127,7 @@ export interface RenderInputs {
   fontsDir: string;           // folder with the bundled OFL fonts (Anton, Inter)
   workDir: string;            // temp folder for this render (ass, headline text)
   output: string;
-  quality?: { crf: number; preset: string; audioKbps: number; normalize: boolean };
+  quality?: { crf: number; preset: string; audioKbps: number; normalize: boolean; threads?: number };
 }
 
 /** Hash of everything that affects the output: unchanged clips aren't re-rendered. */
@@ -195,8 +195,11 @@ export async function buildRender(i: RenderInputs): Promise<{ args: string[]; du
   if (hasAudio) parts.push(q.normalize ? `[a0]loudnorm=I=-14:TP=-1.5:LRA=11,aresample=48000[afinal]` : `[a0]aresample=48000[afinal]`);
 
   const durationSec = ranges.reduce((s, r) => s + r.end - r.start, 0);
-  const args = ["-hide_banner", "-y", "-nostats", "-ss", seek.toFixed(3), "-to", until.toFixed(3), "-i", info.path,
+  // threads > 0 caps encoder/filter threads: less memory and CPU on small machines
+  const thr = q.threads && q.threads > 0 ? ["-threads", String(q.threads), "-filter_complex_threads", String(q.threads)] : [];
+  const args = ["-hide_banner", "-y", "-nostats", ...thr, "-ss", seek.toFixed(3), "-to", until.toFixed(3), "-i", info.path,
     "-filter_complex", parts.join(";"), "-map", "[vfinal]", ...(hasAudio ? ["-map", "[afinal]"] : []),
+    ...(q.threads && q.threads > 0 ? ["-threads", String(q.threads)] : []),
     "-c:v", "libx264", "-preset", q.preset, "-crf", String(q.crf), "-r", String(Math.min(60, Math.round(info.video.fps) || 30)),
     ...(hasAudio ? ["-c:a", "aac", "-b:a", `${q.audioKbps}k`] : []), "-movflags", "+faststart", "-progress", "pipe:1", i.output];
   return { args, durationSec, ranges };

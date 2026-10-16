@@ -107,3 +107,21 @@ export async function thumbnail(input: string, atSec: number, out: string, width
   await run(tools.ffmpeg, ["-hide_banner", "-y", "-ss", String(Math.max(0, atSec)), "-i", input, "-frames:v", "1", "-vf", `scale=${width}:-2`, "-q:v", "4", out]);
   return out;
 }
+
+/**
+ * A filmstrip for the timeline: `count` evenly spaced frames tiled into one JPEG row,
+ * each `height` px tall. One FFmpeg pass with fast keyframe seeking per frame would be
+ * slower for long files, so the fps filter samples the whole file in a single decode.
+ */
+export async function filmstrip(input: string, durationSec: number, out: string, count = 60, height = 54, tools: Tools = defaultTools, opts: RunOptions = {}): Promise<{ path: string; count: number; frameWidth: number }> {
+  const n = Math.max(2, Math.min(240, Math.round(count)));
+  // sample slightly more often than n per duration so the tile row is always full to the end
+  const every = Math.max(0.25, durationSec / (n + 1.5));
+  // keyframe-only decode is fast but leaves the end of the row empty when keyframes are further
+  // apart than the sample step, so only use it when the step is long (long recordings)
+  const fast = every >= 20 ? ["-skip_frame", "nokey"] : [];
+  await run(tools.ffmpeg, ["-hide_banner", "-y", ...fast, "-i", input, "-an", "-sn",
+    "-vf", `fps=1/${every.toFixed(3)},scale=-2:${height},tile=${n}x1:padding=0`, "-frames:v", "1", "-q:v", "5", out], { ...opts, durationSec });
+  const info = await probe(out, tools).catch(() => null);
+  return { path: out, count: n, frameWidth: info?.video ? Math.round(info.video.width / n) : 0 };
+}

@@ -37,6 +37,8 @@ export function SettingsView() {
             <option value={17}>High (larger files)</option><option value={20}>Balanced</option><option value={24}>Smaller files</option></select></label>
           <label className="field"><span>Encoding speed</span><select className="input" value={s.quality.preset} onChange={(e) => save({ quality: { ...s.quality, preset: e.target.value } })}>
             <option value="veryfast">Fast</option><option value="medium">Better compression (slower)</option></select></label>
+          <label className="field"><span>Computer load while exporting</span><select className="input" value={s.quality.threads} onChange={(e) => save({ quality: { ...s.quality, threads: Number(e.target.value) } })}>
+            <option value={0}>Use all cores (fastest)</option><option value={2}>Light: 2 threads (less memory)</option><option value={1}>Minimal: 1 thread</option></select></label>
           <label className="switch" style={{ alignSelf: "end" }}><input type="checkbox" checked={s.quality.normalize} onChange={(e) => save({ quality: { ...s.quality, normalize: e.target.checked } })} />Even out loudness (−14 LUFS)</label>
         </div>
       </section>
