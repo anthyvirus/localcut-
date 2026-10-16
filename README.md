@@ -34,7 +34,7 @@ Planned (not built yet): word-level transcript editing, multiple video/overlay t
 
 ### From source
 ```bash
-git clone https://github.com/YOUR-ACCOUNT/localcut.git
+git clone https://github.com/anthyvirus/localcut-.git
 cd localcut
 npm ci
 npm run build
